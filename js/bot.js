@@ -1,7 +1,8 @@
 // NTYxNjI3MTU4NTUyOTAzNzM4.XJ--lg.6M7EVHoppmF3QxtrRPnDjMF1Fw4
 const Discord = require('discord.js');
-const strSimil = require('string-similarity')
-const functions = require('./functions')
+const strSimil = require('string-similarity');
+const functions = require('./functions');
+const knownWords = require('./knownWords');
 const client = new Discord.Client();
 
 let textChannel = client.channels.get('561626346954948623');
@@ -13,27 +14,27 @@ let punctutations = ['.', '?']
 const words = ['hans', 'ik', 'jij', 'ben', 'bent', 'wat', 'welk', 'weer', 'wordt', 'het']
 
 
+
 class Message {
-    constructor(message) {
+    constructor(message, ) {
         this._string = message;
-        this._wordArray = [];
+        this._wordObjArray = [];
         this.intention;
 
         this.setIntention();
-        this.setWordArray();
-        console.log(this._wordArray)
+        this.setWordObjArray();
+        
     }
-    setWordArray(){
+    setWordObjArray(){
         punctutations.forEach(leesteken => {
-            this._string = this._string.replace(leesteken);
+            this._string = this._string.replace(leesteken, '');
         })
         let tempArray = this._string.split(' ');
 
         for(let wordIndex in tempArray){
-            console.log(new Word(tempArray[wordIndex], wordIndex).word)
-            this._wordArray.push(new Word(tempArray[wordIndex], wordIndex).word);
+            this._wordObjArray.push(new Word(tempArray[wordIndex], wordIndex));
+            
         }
-        
     }
     setIntention(){
         if(this._string.includes('?')){
@@ -48,8 +49,8 @@ class Word {
         this.string = string;
         this.position = position; 
         this.similarWords = [];
-        this.word;
-        this.findSimilarWords()
+        this.word = this.string;
+        
         
     }
     findSimilarWords(){ // Searches for similar words in the array words
@@ -60,14 +61,11 @@ class Word {
         }
         for(let presetWord of words){
             if(strSimil.compareTwoStrings(word, presetWord) >= 0.6){
-                console.log('tjam');
                 this.similarWords.push(presetWord);
                 this.word = presetWord;
-                console.log('tjam');
                 break;
             }else{
                 this.word = word;
-                console.log('no word found')
             }
         };
         
@@ -75,24 +73,80 @@ class Word {
 }
 
 
-const disectMessage = (message) => {
-    if(message._wordArray.includes('weer')){
-        functions.getWeather(textChannel)
-        // console.log('Searching weather')
-        // const url = 'https://api.darksky.net/forecast/8a8299ad5b7a4dca08087f79b04b97bd/37.8267,-122.4233'
-        // const request = http.get(url, function (response) {
-        //     var buffer = "", data;
-
-        //     response.on("data", function (chunk) {
-        //         buffer += chunk;
-        //     }); 
-
-        //     response.on("end", function (err) {
-        //         data = JSON.parse(buffer);
-        //         textChannel.send(`Het is ${data.currently.apparentTemperature} graden Fahrenheit `)
-        //     });
-
-        // });
+const  disectMessage = async function(message) {
+    console.log('disecting')
+    let wordArray = [];
+    message._wordObjArray.forEach(wordObj => {
+        wordArray.push(wordObj.word.toLowerCase());
+    });
+    if(wordArray.includes('temperatuur') || wordArray.includes('temp') || wordArray.includes('graden')){
+        console.log('includes temperatuur')
+        let timeUNIX;
+        let timeWord = '';
+        let city = '';
+        if(wordArray.length === 1){ //When only word in message is just 'temp'
+            await functions.disecting.askSomething('Voor welke stad wil je de temperatuur weten?', textChannel, client)
+            .then(response => {
+                messagesArray.unshift(new Message(response.content, true)); //create Message object and add to messagesArray
+                messagesArray[0]._wordObjArray.forEach(wordObj => {
+                    city += wordObj.word;
+                    city += ' ';
+                })
+                console.log('fetching weather')
+                functions.getWeather.getTemperature(textChannel, city);
+            })
+        }else{
+            
+            for(wordIndex in wordArray){
+                if(knownWords.tijd.relatief.includes(wordArray[wordIndex])){
+                    timeWord = wordArray[wordIndex];
+                }
+            }
+            for(wordIndex in wordArray){
+                if(wordArray[wordIndex] === 'in'){
+                    let string = '';
+                    for(let i = wordIndex; i < wordArray.length; i++){
+                        if(wordArray[i] !== timeWord){
+                            string += wordArray[i];
+                            string += ' ';
+                        }
+                    }
+                    string = string.replace('in', '').trim()
+                    city = string;
+                    console.log('Found in! -> ' + city)
+                }
+            }
+            if(city === ''){
+                await functions.disecting.askSomething('Voor welke stad wil je de temperatuur weten?', textChannel, client)
+                .then(response => {
+                    messagesArray.unshift(new Message(response.content, true)); //create Message object and add to messagesArray
+                    console.log('City obtained: ' + response)
+                    messagesArray[0]._wordObjArray.forEach(wordObj => {
+                        city += wordObj.word;
+                        city += ' ';
+                        city.trim();
+                    })
+                })
+                
+            }
+            
+            if(timeWord === ''){
+                await functions.disecting.askSomething('Voor wanneer wil je de temperatuur weten?', textChannel, client)
+                .then(response => {
+                    messagesArray.unshift(new Message(response.content, true)); //create Message object and add to messagesArray
+                    console.log('City obtained: ' + response)
+                    messagesArray[0]._wordObjArray.forEach(wordObj => {
+                        timeWord += wordObj.word;
+                        timeWord += ' ';
+                        timeWord = timeWord.trim();
+                    })
+                })
+            }
+            timeUNIX = Math.floor(functions.getTime.dateObjToTimeStamp(functions.getTime.relativeToTime(timeWord)));
+            console.log('tijd: ' + timeWord+ '->' + timeUNIX)
+            functions.getWeather.getTemperature(textChannel, city, timeUNIX);
+        }
+        
     }
 }
 
@@ -103,12 +157,11 @@ client.on('ready', () => {
 })
 
 client.on('message', recMessage =>{
-    if (recMessage.author == client.user) {
+    if (recMessage.author === client.user) {
+        console.log('M --->: ' + recMessage.content)
         return
     }
-
-    messagesArray.unshift(new Message(recMessage.content)); //create Message object and add to messagesArray
-    
+    messagesArray.unshift(new Message(recMessage.content, false)); //create Message object and add to messagesArray
     disectMessage(messagesArray[0]);
 })
 
