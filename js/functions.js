@@ -1,5 +1,7 @@
 const knownWords = require('./knownWords')
+const fetch = require('node-fetch')
 const http = require('https');
+var fs = require('fs');
 
 const disecting = {
     askSomething(question, channel, client){
@@ -53,6 +55,20 @@ const getWeather = {
             let lng , lat, coords;
             // geocoding key: 4fd322af35734eeebcfec687d05080e9
             const urlGeoCode = `https://api.opencagedata.com/geocode/v1/json?q=${city}&key=4fd322af35734eeebcfec687d05080e9`
+            // fetch(urlGeoCode)
+            //     .then((response) => {
+            //         let data = response.json();
+            //         console.log(data;
+            //         if(data.results.length !== 0){
+            //             lng = data.results[0].geometry.lng;
+            //             lat = data.results[0].geometry.lat;
+            //             coords = [lat, lng]
+            //             console.log(coords)
+            //             resolve(coords)
+            //         }else{
+            //             reject(`Could not get coordinates for ${city}`)
+            //         }
+            //     })
             const requestGeoCode = http.get(urlGeoCode, function (response) {
                 var buffer = "", data;
                 response.on("data", function (chunk) {
