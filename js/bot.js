@@ -165,4 +165,4 @@ client.on('message', recMessage =>{
     disectMessage(messagesArray[0]);
 })
 
-client.login('NTYxNjI3MTU4NTUyOTAzNzM4.XJ--lg.6M7EVHoppmF3QxtrRPnDjMF1Fw4')
+client.login(SECRET_TOKEN)
